@@ -11,12 +11,13 @@
 ## Phase Progress
 
 ### Phase 1: Data Infrastructure
-- [x] 1.1 — API Account Setup & Key Management *(in progress — keys pending)*
-- [x] 1.2 — Price & Market Data Module (CoinGecko) ✅ LIVE
-- [ ] 1.3 — On-Chain Data Module (Glassnode, CryptoQuant, Dune, DeFiLlama)
-- [ ] 1.4 — Wallet Tracking Module (Arkham, block explorers, smart money watchlist)
-- [ ] 1.5 — Derivatives Data Module (Coinglass)
-- [ ] 1.6 — Sentiment Data Module (LunarCrush, Santiment, CryptoPanic, Reddit/X)
+- [x] 1.1 — API Account Setup & Key Management *(in progress — CoinGlass + LunarCrush signup)*
+- [x] 1.2 — Price & Market Data Module (CoinGecko) ✅ LIVE — BTC $74,440 ETH $2,368 SOL $85.73
+- [x] 1.3 — On-Chain Data Module (DeFiLlama) ✅ LIVE — 453 chains, 7,310 protocols
+- [x] 1.4 — Wallet Tracking Module (EVM/BTC/SOL explorers) ✅ LIVE — Satoshi 107 BTC confirmed
+- [ ] 1.4b — Arkham wallet analysis 🔄 IN PROGRESS — API key needed
+- [x] 1.5 — Derivatives Data Module (Coinglass) ⚠️ BUILT — API key required
+- [ ] 1.6 — Sentiment Data Module (LunarCrush) 🔄 IN PROGRESS — signup needed
 
 ### Phase 2: Technical Analysis Engine
 - [ ] 2.1 — Core Technical Indicators
@@ -52,19 +53,24 @@
 ---
 
 ## Current Sprint
-**Sprint 1:** Phase 1 — Data Infrastructure
-**Focus:** 1.1 API accounts + 1.2 Price Data Module
+**Sprint 1:** Phase 1 — Data Infrastructure (~60% complete)
+**Focus:** API signups, wallet module, sentiment module
 
 ### Sprint Tasks
-1. Sign up for all free-tier API accounts (CoinGecko, Glassnode, CryptoQuant, Coinglass, DeFiLlama, etc.)
-2. Store all API keys in TOOLS.md immediately
-3. Build Python environment and core data fetching framework
-4. Start with CoinGecko price module (free tier, most accessible)
-5. Build standardized data format (JSON: timestamp, open, high, low, close, volume)
+1. [DONE] Python environment + core libs ✅
+2. [DONE] CoinGecko price module ✅
+3. [DONE] DeFiLlama on-chain module ✅
+4. [DONE] Wallet explorer module ✅ (BTC/ETH/SOL public APIs live)
+5. [DONE] CoinGlass derivatives module ⚠️ (API key needed)
+6. [IN PROGRESS] Arkham API signup + wallet discovery
+7. [IN PROGRESS] LunarCrush sentiment API signup
+8. [NEXT] Technical Analysis Engine (Phase 2)
 
 ### Blockers
-- Need operator to provide any existing exchange API keys they have
-- Need operator to confirm which exchanges they already have accounts on
+- CoinGlass API key — need to register at coinglass.com
+- LunarCrush API key — need to register at lunarcrush.com
+- Arkham API key — need to register at arkhamintelligence.com
+- Operator confirmed: analyze wallets autonomously, no need to wait for input
 
 ---
 
@@ -74,21 +80,14 @@
 1. **This file is the source of truth** for what phase we're in and what's next
 2. **Servius does the building** — Python scripts, data pipelines, analysis engines
 3. **Clawd coordinates** — reviews architecture, handles cross-project dependencies
-4. **Both update this file** — when starting a task, mark it in-progress; when done, mark done with evidence
-5. **Always pick up where we left off** — read CRYPTO-QUANT-PROJECT.md at session start, continue from current sprint
+4. **Both update this file** — when starting a task, mark in-progress; when done, mark done with evidence
+5. **Always pick up where we left off** — read this file at session start
 
 ### Handoff Protocol
-- When Servius finishes a module, push code to GitHub and note it here
-- When Clawd needs changes, note them in #agent-comms or here
-- If blocked, update the blockers section and ping the responsible party
+- When Servius finishes a module, push code to GitHub and update this file
+- When Clawd needs changes, note them in #agent-comms
+- If blocked, update blockers section and ping responsible party
 - Never duplicate work — check this file before starting anything new
-
-### Session Start Checklist
-1. Read CRYPTO-QUANT-PROJECT.md → find current sprint and task
-2. Read memory/YYYY-MM-DD.md → recent context
-3. Check #quant-trading for operator messages
-4. Continue from current task — don't restart completed work
-5. Update this file when done or blocked
 
 ---
 
@@ -100,3 +99,4 @@
 | 2026-04-14 | Start with CoinGecko free tier | Most accessible, good coverage, no cost to start |
 | 2026-04-14 | Paper trade $10K minimum 50 trades | Roadmap requirement — no live trading until proven |
 | 2026-04-14 | Mode 1 (manual approval) to start | Safety first — earn trust through performance |
+| 2026-04-14 | Autonomous wallet analysis | Operator directive: analyze wallets myself, decide what's worth tracking |
