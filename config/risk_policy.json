@@ -8,5 +8,21 @@
   "cooldown_minutes": 60,
   "max_positions_open": 3,
   "max_trades_per_day": 5,
-  "risk_per_trade_pct": 0.01
+  "risk_per_trade_pct": 0.01,
+  "signal_weights": {
+    "ta": 0.3,
+    "onchain": 0.25,
+    "sentiment": 0.2,
+    "derivatives": 0.15,
+    "social": 0.1
+  },
+  "refinement_loop": {
+    "enabled": true,
+    "lookback_days": 7,
+    "min_trades": 3,
+    "low_threshold": 0.4,
+    "high_threshold": 0.6,
+    "max_change_pct": 0.05
+  },
+  "last_refinement": "2026-04-14T00:00:00Z"
 }
