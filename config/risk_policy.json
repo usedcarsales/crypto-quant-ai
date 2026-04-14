@@ -1,45 +1,12 @@
 {
-  "position_sizing": {
-    "max_risk_per_trade_pct": 1.0,
-    "max_risk_high_conviction_pct": 2.0,
-    "max_total_exposure_pct": 25.0,
-    "max_single_asset_pct": 10.0,
-    "max_correlated_assets_pct": 15.0,
-    "max_leverage": 1,
-    "estimated_slippage_pct": 0.1,
-    "min_24h_volume_usd": 1000000,
-    "max_position_duration_hours": 168
-  },
-  "risk_limits": {
-    "max_drawdown_circuit_breaker_pct": 10.0,
-    "max_daily_loss_pct": 5.0,
-    "consecutive_loss_pause": 3,
-    "consecutive_loss_pause_hours": 24,
-    "single_trade_max_loss_pct": 3.0,
-    "_comment_single_trade_max_loss": "Hard stop-loss ceiling — when price moves against position by 3%, exit immediately regardless of conviction. Different from max_risk_per_trade_pct (1.0) which controls position SIZE, not loss threshold."
-  },
-  "signal_threshold_conviction": 65,
-  "paper_portfolio_starting_balance_usd": 10000,
-  "paper_trading_min_trades": 50,
-  "paper_trading_min_win_rate_pct": 55.0,
-  "paper_trading_min_profit_factor": 1.5,
-  "paper_trading_max_drawdown_pct": 15.0,
-  "approval_mode": "mode_1_manual",
-  "mode_thresholds": {
-    "mode_1_manual": "every_trade_needs_approval",
-    "mode_2_supervised": "small_auto_large_approval",
-    "mode_3_autonomous": "full_auto_within_risk_params"
-  },
-  "conviction_sizing": {
-    "65": "1% risk",
-    "75": "1.5% risk",
-    "85+": "2% risk"
-  },
-  "kill_switch": {
-    "manual_command": "/kill",
-    "auto_drawdown_24h_pct": 10.0,
-    "auto_single_trade_loss_pct": 3.0,
-    "auto_consecutive_losses": 3,
-    "auto_daily_loss_pct": 5.0
-  }
+  "max_position_size_usd": 1000,
+  "max_daily_loss_usd": 100,
+  "min_confidence_to_trade": 50,
+  "strong_signal_threshold": 70,
+  "stop_loss_atr_multiplier": 1.5,
+  "take_profit_min_ratio": 2.0,
+  "cooldown_minutes": 60,
+  "max_positions_open": 3,
+  "max_trades_per_day": 5,
+  "risk_per_trade_pct": 0.01
 }

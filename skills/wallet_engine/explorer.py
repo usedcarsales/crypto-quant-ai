@@ -84,11 +84,23 @@ def get_eth_wallet(address: str) -> dict:
     data = _eth_get("account", "balance", address, {"tag": "latest"})
     balance_wei = data.get("result", "0")
     balance_eth = int(balance_wei) / 1e18 if balance_wei and balance_wei.isdigit() else 0.0
+    # Live ETH price
+    try:
+        import requests as _req
+        cg = _req.get(
+            "https://api.coingecko.com/api/v3/simple/price",
+            params={"ids": "ethereum", "vs_currencies": "usd"},
+            timeout=10,
+        )
+        eth_usd = cg.json().get("ethereum", {}).get("usd", 2366)
+    except Exception:
+        eth_usd = 2366
+
     return {
         "address": address,
         "chain": "ETH/EVM",
         "balance_eth": round(balance_eth, 6),
-        "balance_usd_estimate": round(balance_eth * 74440, 2),  # rough BTC/ETH ratio used
+        "balance_usd_estimate": round(balance_eth * eth_usd, 2),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "source": "Etherscan public API",
     }
