@@ -25,13 +25,20 @@ def _rate_limit():
     LAST_CALL = time.time()
 
 
-def _get(endpoint: str, params: dict = None) -> dict:
-    """Make a rate-limited GET request to CoinGecko."""
+def _get(endpoint: str, params: dict = None, _retries: int = 3) -> dict:
+    """Make a rate-limited GET request to CoinGecko with retry on 429."""
     _rate_limit()
     url = f"{BASE_URL}/{endpoint}"
-    resp = requests.get(url, params=params, timeout=10)
+    for attempt in range(_retries):
+        resp = requests.get(url, params=params, timeout=15)
+        if resp.status_code == 429:
+            wait = int(resp.headers.get("Retry-After", 5))
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        return resp.json()
+    # last attempt also failed — raise
     resp.raise_for_status()
-    return resp.json()
 
 
 # ─── Prices ──────────────────────────────────────────────────────────────────
