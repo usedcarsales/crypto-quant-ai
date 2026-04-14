@@ -1,0 +1,103 @@
+{
+  "coingecko": {
+    "base_url": "https://api.coingecko.com/api/v3",
+    "auth": "api_key",
+    "rate_limit_free": "30 calls/min",
+    "rate_limit_paid": "500 calls/min",
+    "free_tier_caps": {
+      "historical_days": 365,
+      "ohlcv_granularity": "daily"
+    },
+    "provides": ["prices", "ohlcv", "market_cap", "volume", "trending", "new_listings"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "glassnode": {
+    "base_url": "https://api.glassnode.com/v2/metrics",
+    "auth": "api_key",
+    "rate_limit_free": "limited",
+    "provides": ["mvrv", "sopr", "exchange_flows", "active_addresses", "hash_rate"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "cryptoquant": {
+    "base_url": "https://api.cryptoquant.com/api/v3",
+    "auth": "api_key",
+    "rate_limit_free": "basic",
+    "provides": ["exchange_reserves", "miner_flows", "stablecoin_supply_ratio"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "dune_analytics": {
+    "base_url": "https://api.dune.com/api/v1",
+    "auth": "api_key",
+    "rate_limit_free": "2500 queries/mo",
+    "provides": ["custom_sql_queries", "any_chain", "any_protocol"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "coinglass": {
+    "base_url": "https://open-api.coinglass.com/public/v2",
+    "auth": "api_key",
+    "rate_limit_free": "basic",
+    "provides": ["open_interest", "funding_rates", "liquidations", "long_short_ratio"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "defillama": {
+    "base_url": "https://api.llama.fi",
+    "auth": "none",
+    "rate_limit_free": "unlimited",
+    "provides": ["tvl", "protocol_flows", "stablecoin_flows", "yield_data"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "arkham": {
+    "base_url": "https://api.arkhamintelligence.com",
+    "auth": "api_key",
+    "rate_limit_free": "limited",
+    "provides": ["wallet_tracking", "entity_labels", "transaction_analysis"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "lunarcrush": {
+    "base_url": "https://lunarcrush.com/api4/public",
+    "auth": "api_key",
+    "rate_limit_free": "basic",
+    "provides": ["social_volume", "social_dominance", "galaxy_score"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "santiment": {
+    "base_url": "https://api.santiment.net/graphql",
+    "auth": "api_key",
+    "rate_limit_free": "limited",
+    "provides": ["dev_activity", "social_trends", "holder_distribution"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "cryptopanic": {
+    "base_url": "https://cryptopanic.com/api/v1",
+    "auth": "api_key",
+    "rate_limit_free": "5 calls/min",
+    "provides": ["news_sentiment", "aggregated_crypto_news"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "dexscreener": {
+    "base_url": "https://api.dexscreener.com/latest",
+    "auth": "none",
+    "rate_limit_free": "300 req/min",
+    "provides": ["dex_pairs", "trending_tokens", "real_time_prices"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  },
+  "birdeye": {
+    "base_url": "https://public-api.birdeye.so",
+    "auth": "api_key",
+    "rate_limit_free": "free_tier",
+    "provides": ["multi_chain_analytics", "token_data", "trending"],
+    "status": "PENDING_SETUP",
+    "api_key": null
+  }
+}
