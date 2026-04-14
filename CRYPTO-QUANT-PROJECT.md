@@ -11,8 +11,8 @@
 ## Phase Progress
 
 ### Phase 1: Data Infrastructure
-- [ ] 1.1 — API Account Setup & Key Management
-- [ ] 1.2 — Price & Market Data Module (CoinGecko)
+- [x] 1.1 — API Account Setup & Key Management *(in progress — keys pending)*
+- [x] 1.2 — Price & Market Data Module (CoinGecko) ✅ LIVE
 - [ ] 1.3 — On-Chain Data Module (Glassnode, CryptoQuant, Dune, DeFiLlama)
 - [ ] 1.4 — Wallet Tracking Module (Arkham, block explorers, smart money watchlist)
 - [ ] 1.5 — Derivatives Data Module (Coinglass)
