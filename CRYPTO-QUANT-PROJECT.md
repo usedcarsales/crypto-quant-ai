@@ -20,9 +20,9 @@
 - [ ] 1.6 — Sentiment Data Module (LunarCrush) 🔄 IN PROGRESS — signup needed
 
 ### Phase 2: Technical Analysis Engine
-- [ ] 2.1 — Core Technical Indicators
-- [ ] 2.2 — Multi-Timeframe Analysis
-- [ ] 2.3 — Chart Pattern Recognition
+- [x] 2.1 — Core Technical Indicators (RSI, MACD, Bollinger, ATR, VWAP) ✅
+- [x] 2.2 — Multi-Timeframe Analysis (4H/1D/1W synthesis) ✅
+- [x] 2.3 — Chart Pattern Recognition (trend/SR pivots) ✅
 - [ ] 2.4 — Key Level Mapping
 - [ ] 2.5 — Technical Score Generator
 
@@ -53,7 +53,8 @@
 ---
 
 ## Current Sprint
-**Sprint 1:** Phase 1 — Data Infrastructure (~60% complete)
+**Sprint 1:** Phase 1 — Data Infrastructure ✅ DONE
+**Sprint 2:** Phase 2 — Technical Analysis ✅ DONE
 **Focus:** API signups, wallet module, sentiment module
 
 ### Sprint Tasks
