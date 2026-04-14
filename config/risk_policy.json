@@ -1,14 +1,23 @@
 {
-  "max_risk_per_trade_pct": 1.0,
-  "max_risk_high_conviction_pct": 2.0,
-  "max_total_exposure_pct": 25.0,
-  "max_single_asset_pct": 10.0,
-  "correlation_limit": "no_correlated_stacking_at_full_size",
-  "max_drawdown_circuit_breaker_pct": 10.0,
-  "max_daily_loss_pct": 5.0,
-  "consecutive_loss_pause": 3,
-  "consecutive_loss_pause_hours": 24,
-  "single_trade_max_loss_pct": 3.0,
+  "position_sizing": {
+    "max_risk_per_trade_pct": 1.0,
+    "max_risk_high_conviction_pct": 2.0,
+    "max_total_exposure_pct": 25.0,
+    "max_single_asset_pct": 10.0,
+    "max_correlated_assets_pct": 15.0,
+    "max_leverage": 1,
+    "estimated_slippage_pct": 0.1,
+    "min_24h_volume_usd": 1000000,
+    "max_position_duration_hours": 168
+  },
+  "risk_limits": {
+    "max_drawdown_circuit_breaker_pct": 10.0,
+    "max_daily_loss_pct": 5.0,
+    "consecutive_loss_pause": 3,
+    "consecutive_loss_pause_hours": 24,
+    "single_trade_max_loss_pct": 3.0,
+    "_comment_single_trade_max_loss": "Hard stop-loss ceiling — when price moves against position by 3%, exit immediately regardless of conviction. Different from max_risk_per_trade_pct (1.0) which controls position SIZE, not loss threshold."
+  },
   "signal_threshold_conviction": 65,
   "paper_portfolio_starting_balance_usd": 10000,
   "paper_trading_min_trades": 50,
