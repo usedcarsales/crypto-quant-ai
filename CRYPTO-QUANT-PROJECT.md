@@ -59,6 +59,12 @@
   - Portfolio metrics, per-coin breakdown, signal source analysis, equity curve
 
 ### Phase 5: Live Execution (operator-approved 2026-04-14)
+- [x] 5.1b — Kraken CLI Integration ✅ COMPLETE — `skills/execution_engine/kraken_cli.py`
+  - krakenfx/kraken-cli v0.3.1 installed at ~/.cargo/bin
+  - Paper trading: works WITHOUT API key (local sandbox, live market data)
+  - Live trading: needs KRAKEN_API_KEY + KRAKEN_API_SECRET env vars
+  - Replaces CCXT: native Kraken binary, JSON output, MCP server built-in
+  - BTC/USD confirmed live: $74,261 bid/ask, paper buy/sell/history tested
 - [x] 5.1 — Exchange API Integration ✅ COMPLETE — `skills/execution_engine/exchange_client.py`
   - CCXT 4.5.48 unified interface; Kraken 1506 markets live; Binance testnet 451 blocked
   - Sandbox mode, rate limiting, exponential backoff
