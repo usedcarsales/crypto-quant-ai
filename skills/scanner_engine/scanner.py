@@ -88,6 +88,7 @@ def fetch_top_coins(n: int = 100, vs_currency: str = "usd") -> list[dict]:
     """
     Fetch top N coins by volume from CoinGecko.
     Returns list of coin dicts with market data.
+    Includes retry logic for 429 rate limits.
     """
     _load_vol_cache()
     results = []
@@ -95,26 +96,34 @@ def fetch_top_coins(n: int = 100, vs_currency: str = "usd") -> list[dict]:
     pages = (n + per_page - 1) // per_page
 
     for page in range(1, pages + 1):
-        try:
-            r = requests.get(
-                COINGECKO_MARKETS,
-                params={
-                    "vs_currency": vs_currency,
-                    "order": "volume_desc",
-                    "per_page": per_page,
-                    "page": page,
-                    "sparkline": "false",
-                    "price_change_percentage": "1h,24h,7d",
-                },
-                headers=HEADERS,
-                timeout=20,
-            )
-            if r.status_code != 200:
-                break
-            results.extend(r.json())
-            time.sleep(0.7)  # be polite to CoinGecko free tier
-        except Exception:
-            break
+        for attempt in range(3):  # retry up to 3 times
+            try:
+                r = requests.get(
+                    COINGECKO_MARKETS,
+                    params={
+                        "vs_currency": vs_currency,
+                        "order": "volume_desc",
+                        "per_page": per_page,
+                        "page": page,
+                        "sparkline": "false",
+                        "price_change_percentage": "1h,24h,7d",
+                    },
+                    headers=HEADERS,
+                    timeout=20,
+                )
+                if r.status_code == 429:
+                    # Rate limited — wait 65s and retry
+                    time.sleep(65)
+                    continue
+                if r.status_code != 200:
+                    break
+                results.extend(r.json())
+                break  # success, exit retry loop
+            except Exception:
+                time.sleep(10)
+        else:
+            break  # all retries exhausted for this page
+        time.sleep(1.5)  # be polite to CoinGecko free tier
 
     return results[:n]
 
