@@ -238,17 +238,63 @@ def score_composite(symbol, coin_id=None, weights=None, chain="ETH",
     ) + scanner_boost
     composite = round(min(max(composite, 0), 100), 1)
 
-    # Signal
-    if composite >= 70:    signal = "BUY"
-    elif composite <= 35: signal = "SELL"
-    else:                  signal = "NEUTRAL"
+    # ── RSI Safety Guard ─────────────────────────────────────────────────────
+    # Extract RSI from ta_data
+    rsi_value = None
+    if ta_data and "indicators" in ta_data:
+        rsi_value = ta_data["indicators"].get("rsi_14")
+    elif ta_data and isinstance(ta_data, dict):
+        rsi_value = ta_data.get("rsi_14") or ta_data.get("rsi")
+
+    rsi_guard = None
+    rsi_signal_override = None
+    rsi_composite_override = None
+    rsi_confidence_adjust = None
+
+    if rsi_value is not None:
+        if rsi_value >= 80:
+            # HARD BLOCK — overbought, no execution regardless of composite
+            rsi_guard = "HARD_BLOCK"
+            rsi_signal_override = "NEUTRAL"
+            rsi_composite_override = 35  # push below execution threshold
+            composite = 35
+            rsi_confidence_adjust = "low"
+        elif rsi_value >= 70:
+            # SOFT WARNING — overbought zone, require extra confirmation
+            # Apply 15-point penalty; need composite ≥ 75 BEFORE penalty to override
+            if composite < 75:
+                rsi_guard = "SOFT_WARNING"
+                composite = max(0, composite - 15)
+                composite = round(composite, 1)
+                rsi_confidence_adjust = "medium"
+        elif rsi_value < 30:
+            # BUY OPPORTUNITY — oversold, great entry point
+            rsi_guard = "BUY_OPPORTUNITY"
+            composite = min(100, composite + 8)
+            composite = round(composite, 1)
+            rsi_confidence_adjust = "high"
+        else:
+            rsi_guard = "NORMAL"
+    else:
+        rsi_guard = "RSI_UNAVAILABLE"
+
+    # Re-evaluate signal after RSI guard
+    if rsi_signal_override:
+        signal = rsi_signal_override
+    else:
+        if composite >= 70:    signal = "BUY"
+        elif composite <= 35:  signal = "SELL"
+        else:                  signal = "NEUTRAL"
 
     # Confidence: low stddev = aligned signals = high confidence
     all_scores = [ta_score, onchain_score, smart_score, defi_score, social_score]
     sd = _stddev(all_scores)
-    if sd > 25:    confidence = "low"
-    elif sd > 15:  confidence = "medium"
-    else:          confidence = "high"
+    if rsi_confidence_adjust:
+        # RSI guard overrides normal confidence calculation
+        confidence = rsi_confidence_adjust
+    elif sd > 25:    confidence = "low"
+    elif sd > 15:    confidence = "medium"
+    else:            confidence = "high"
 
     # Divergence: max-min spread > 40 = disagreement between signals
     divergence = (max(all_scores) - min(all_scores)) > 40
@@ -276,6 +322,8 @@ def score_composite(symbol, coin_id=None, weights=None, chain="ETH",
         "social_score":       round(social_score, 1),
         "scanner_boost":      round(scanner_boost, 2),
         "scanner_triggers":   scanner_triggers,
+        "rsi":                rsi_value,
+        "rsi_guard":           rsi_guard,
         "weights_used":       weights,
         "ta_data":            ta_data,
         "timestamp":          datetime.now(timezone.utc).isoformat(),
@@ -375,13 +423,43 @@ def score_all(weights=None, run_scanner: bool = True):
             )
             composite = round(min(max(composite, 0), 100), 1)
 
+            # ── RSI Safety Guard (scanner-only coins) ──────────────────────────
+            # Extract RSI: cached scanner RSI or from TA analysis
+            rsi_value = cand.get("rsi")
+            if rsi_value is None and ta_data and "indicators" in ta_data:
+                rsi_value = ta_data["indicators"].get("rsi_14")
+
+            rsi_guard = None
+            if rsi_value is not None:
+                if rsi_value >= 80:
+                    # HARD BLOCK — overbought, no execution regardless of composite
+                    rsi_guard = "HARD_BLOCK"
+                    composite = 35
+                elif rsi_value >= 70:
+                    # SOFT WARNING — require extra confirmation
+                    if composite < 75:
+                        rsi_guard = "SOFT_WARNING"
+                        composite = max(0, composite - 15)
+                        composite = round(composite, 1)
+                elif rsi_value < 30:
+                    # BUY OPPORTUNITY — oversold, great entry
+                    rsi_guard = "BUY_OPPORTUNITY"
+                    composite = min(100, composite + 8)
+                    composite = round(composite, 1)
+                else:
+                    rsi_guard = "NORMAL"
+            else:
+                rsi_guard = "RSI_UNAVAILABLE"
+
             signal = "BUY" if composite >= 70 else "SELL" if composite <= 35 else "NEUTRAL"
 
             # Scanner-only coins with strong momentum get tagged as HIGH POTENTIAL
             # even if conviction < 70 (reported as alerts, not auto-traded)
+            # BUT RSI oversold must be genuine (not RSI overbought which is a warning)
             high_potential = (
-                cand.get("rsi_triggered") or
-                (scanner_raw >= 8) or
+                (rsi_guard == "BUY_OPPORTUNITY") or
+                (cand.get("rsi_triggered") and rsi_guard != "HARD_BLOCK") or
+                (scanner_raw >= 8 and rsi_guard not in ("HARD_BLOCK","SOFT_WARNING")) or
                 (composite >= 55 and any("RSI_OVERSOLD" in t for t in cand.get("triggers", [])))
             )
 
@@ -402,7 +480,8 @@ def score_all(weights=None, run_scanner: bool = True):
                 "high_potential":      high_potential,
                 "scanner_triggers":   cand.get("triggers", []),
                 "scanner_raw_score":  scanner_raw,
-                "rsi":                cand.get("rsi"),
+                "rsi":                rsi_value,
+                "rsi_guard":           rsi_guard,
                 "price_1h":           cand.get("price_1h"),
                 "price_24h":          cand.get("price_24h"),
                 "price_7d":           cand.get("price_7d"),
