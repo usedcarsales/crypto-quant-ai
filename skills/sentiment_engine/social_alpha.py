@@ -1,7 +1,7 @@
 """
 Social & News Alpha Engine
 Phase 3, Task 3.5 — Sentiment scoring from social + on-chain signals
-Available free sources: Reddit (r/CryptoCurrency), CoinGecko trending/global
+Sources: Reddit, CoinGecko, RSS news aggregator (7 sources, no API key)
 Requires API key for: CryptoCompare news, LunarCrush, CoinMarketCap
 """
 
@@ -10,6 +10,19 @@ import time
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Optional
+
+
+# ─── RSS News Client (primary free sentiment source) ──────────────────────────
+try:
+    from skills.sentiment_engine.news_client import (
+        get_market_sentiment as _rss_market,
+        get_trending_news   as _rss_trending,
+        get_coin_news       as _rss_coin,
+        format_market_sentiment as _format_rss_market,
+    )
+    RSS_AVAILABLE = True
+except Exception:
+    RSS_AVAILABLE = False
 
 
 # ─── API Keys (operator to fill in) ──────────────────────────────────────────
@@ -217,7 +230,9 @@ def get_trending_alert() -> dict:
 def get_global_sentiment() -> dict:
     """
     Get global market data as a broad sentiment signal.
-    Market cap change 24h and volume are macro情绪 indicators.
+    NOW ENRICHED with RSS news aggregator data (primary signal source).
+    Returns: mcap_change_24h, volume_change, btc_dominance,
+             rss_sentiment (from 7 RSS sources), combined_label
     """
     try:
         resp = requests.get(f"{COINGECKO_BASE}/global", timeout=10)
@@ -228,14 +243,53 @@ def get_global_sentiment() -> dict:
         mcp = d.get("market_cap_change_percentage_24h_usd", 0)
         vcp = d.get("volume_change_percentage_24h_usd", 0)
 
-        return {
-            "mcap_change_24h": round(mcp, 2),
-            "vol_change_24h":  round(vcp, 2),
-            "active_cryptos": d.get("active_cryptocurrencies", 0),
-            "btc_dominance":  round(d.get("market_cap_percentage", {}).get("btc", 0), 2),
-            "global_sentiment": "bullish" if mcp > 2 else "bearish" if mcp < -2 else "neutral",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+        # CoinGecko-derived sentiment
+        cg_sentiment = "bullish" if mcp > 2 else "bearish" if mcp < -2 else "neutral"
+
+        # ── RSS News Sentiment (primary source) ────────────────────────────
+        rss_sentiment_data = {}
+        if RSS_AVAILABLE:
+            try:
+                rss_sentiment_data = _rss_market(hours=6)
+            except Exception:
+                pass
+
+        rss_score = rss_sentiment_data.get("sentiment_score", 0)
+        rss_label = rss_sentiment_data.get("label", "neutral")
+
+        # Combine: RSS is primary (60%), CoinGecko mcap is secondary (40%)
+        if rss_sentiment_data:
+            combined_score = round(rss_score * 0.6 + mcp * 4 * 0.4, 3)
+            # Normalize to 0-100 from score
+            combined_norm = max(0, min(100, 50 + combined_score * 50))
+        else:
+            combined_norm = max(0, min(100, 50 + mcp * 8))
+            combined_score = mcp
+
+        if combined_norm >= 65:  combined_label = "bullish"
+        elif combined_norm <= 40: combined_label = "bearish"
+        else:                    combined_label = "neutral"
+
+        result = {
+            "mcap_change_24h":       round(mcp, 2),
+            "vol_change_24h":        round(vcp, 2),
+            "active_cryptos":        d.get("active_cryptocurrencies", 0),
+            "btc_dominance":         round(d.get("market_cap_percentage", {}).get("btc", 0), 2),
+            "global_sentiment":      combined_label,
+            "rss_available":         RSS_AVAILABLE,
+            "rss_sentiment":         rss_label,
+            "rss_score":             rss_score,
+            "rss_articles_analyzed": rss_sentiment_data.get("articles_analyzed", 0),
+            "rss_bullish":           rss_sentiment_data.get("bullish_articles", 0),
+            "rss_bearish":           rss_sentiment_data.get("bearish_articles", 0),
+            "rss_top_bullish":       rss_sentiment_data.get("top_bullish", [])[:3],
+            "rss_top_bearish":       rss_sentiment_data.get("top_bearish", [])[:3],
+            "rss_top_coins":         rss_sentiment_data.get("top_coins", [])[:5],
+            "combined_score":        round(combined_norm, 1),
+            "timestamp":             datetime.now(timezone.utc).isoformat(),
         }
+        return result
+
     except Exception as e:
         return {"error": str(e)}
 

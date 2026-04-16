@@ -22,13 +22,11 @@ from typing import Optional
 
 # ─── Arkham API (Real Client) ────────────────────────────────────────────────
 from skills.wallet_engine.arkham_client import (
-    identify_wallet as arkham_identify,
-    search_entities as arkham_search,
-    track_entity_flows as arkham_flows,
-    get_address_labels as arkham_labels,
-    get_transfers as arkham_transfers,
-    format_wallet_id as arkham_format_id,
-    format_entity_flows as arkham_format_flows,
+    identify_wallet         as arkham_identify,
+    search_entities         as arkham_search,
+    track_entity_flows      as arkham_flows,
+    get_address_intelligence as arkham_labels,   # renamed for clarity
+    get_entity_intelligence as arkham_entity,
 )
 ARKHAM_KEY = os.environ.get("ARKHAM_API_KEY", "")
 
@@ -202,6 +200,24 @@ def check_watchlist(address=None):
 
         entry["last_balance_usd"] = current_usd
 
+        # ── Arkham Enrichment ─────────────────────────────────────────────
+        # If wallet is a known exchange/institution, pull live Arkham flows
+        wallet_type = entry.get("type", "unknown")
+        arkham_flow = None
+        if ARKHAM_KEY and wallet_type in ("exchange", "institutional"):
+            try:
+                arkham_flow = arkham_flows(entry["label"].lower(), time_last="7d", usd_gte=10_000_000)
+                if arkham_flow and "error" not in arkham_flow:
+                    entry["_arkham_flows"] = arkham_flow
+                    # Boost signal confidence if Arkham confirms flow direction
+                    in_flow = arkham_flow.get("inflows_usd", 0)
+                    out_flow = arkham_flow.get("outflows_usd", 0)
+                    net = arkham_flow.get("net_flow_usd", 0)
+                    if abs(net) > 50_000_000:
+                        entry["_arkham_confirmed_direction"] = "buy" if net > 0 else "sell"
+            except Exception:
+                pass  # Arkham enrichment is best-effort — don't block on failure
+
         if abs(delta_usd) >= entry["threshold"]:
             direction = "BUY" if delta_usd > 0 else "SELL"
             sig = {
@@ -214,7 +230,8 @@ def check_watchlist(address=None):
                 "pct_change":   round(pct_chg, 2),
                 "new_balance":  round(current_usd, 2),
                 "threshold":    entry["threshold"],
-                "confidence":   _confidence(entry["type"], abs(pct_chg)),
+                "confidence":   _confidence(entry["type"], abs(pct_chg), entry.get("_arkham_confirmed_direction")),
+                "arkham_flow":  entry.get("_arkham_flows"),
                 "timestamp":    datetime.now(timezone.utc).isoformat(),
             }
             signals.append(sig)
@@ -225,7 +242,10 @@ def check_watchlist(address=None):
     return signals
 
 
-def _confidence(wallet_type, pct_change):
+def _confidence(wallet_type, pct_change, arkham_dir=None):
+    # Arkham confirmation elevates confidence
+    if arkham_dir and wallet_type in ("exchange", "institutional"):
+        return "high"
     if wallet_type in ("exchange", "institutional") and pct_change > 1:
         return "high"
     elif wallet_type == "whale" and pct_change > 5:
@@ -233,6 +253,71 @@ def _confidence(wallet_type, pct_change):
     elif wallet_type == "degen":
         return "low"
     return "medium"
+
+
+# ─── Arkham Integration ──────────────────────────────────────────────────────
+
+def get_entity_flows(entity_name: str, hours: int = 168, min_usd: float = 1_000_000):
+    """
+    Get live capital flows for a named entity via Arkham.
+    entity_name: 'binance', 'coinbase', 'galaxy-digital', etc.
+    hours: lookback (default 7 days)
+    min_usd: minimum USD transfer threshold
+    """
+    if not ARKHAM_KEY:
+        return {"error": "no_arkham_key"}
+    try:
+        time_last = f"{hours}h" if hours <= 168 else "30d"
+        result = arkham_flows(entity_name, time_last=time_last, usd_gte=min_usd)
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_smart_money_signal() -> dict:
+    """
+    Top-level smart money reading for the correlation engine.
+    Returns: {score: 0-100, signal, whale_signals, institutional_signals}
+    """
+    signals = check_watchlist()
+
+    if not signals:
+        # No balance changes — use Arkham flows as fallback signal
+        try:
+            bnb_flow = arkham_flows("binance", time_last="24h", usd_gte=10_000_000)
+            if bnb_flow and "error" not in bnb_flow:
+                net = bnb_flow.get("net_flow_usd", 0)
+                score = 50 + (net / 100_000_000 * 10)  # rough mapping
+                score = max(0, min(100, score))
+                return {
+                    "score": round(score, 1),
+                    "signal": "BUY" if score > 65 else "SELL" if score < 40 else "NEUTRAL",
+                    "source": "arkham_flows",
+                    "net_flow_usd": net,
+                    "inflows_usd": bnb_flow.get("inflows_usd", 0),
+                    "outflows_usd": bnb_flow.get("outflows_usd", 0),
+                    "top_counterparties": bnb_flow.get("top_counterparties", [])[:5],
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+        except Exception:
+            pass
+        return {"score": 50.0, "signal": "NEUTRAL", "whale_signals": [], "source": "no_data"}
+
+    buys  = [s for s in signals if s["direction"] == "BUY"]
+    sells = [s for s in signals if s["direction"] == "SELL"]
+    total = len(signals)
+    ratio = (len(buys) - len(sells)) / total if total > 0 else 0
+    score = round(min(max(50 + ratio * 30, 0), 100), 1)
+
+    return {
+        "score": score,
+        "signal": "BUY" if score > 65 else "SELL" if score < 40 else "NEUTRAL",
+        "whale_signals": signals,
+        "buy_count": len(buys),
+        "sell_count": len(sells),
+        "source": "wallet_engine",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # ─── Whale Alert ───────────────────────────────────────────────────────────────
