@@ -12,6 +12,7 @@ get_eth_wallet = _wl.get_eth_wallet
 get_btc_wallet = _wl.get_btc_wallet
 get_sol_wallet = _wl.get_sol_wallet
 
+import os
 import requests
 import time
 from datetime import datetime, timezone
@@ -19,9 +20,17 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-# ─── Arkham API ───────────────────────────────────────────────────────────────
-ARKHAM_BASE = "https://api.arakham.io/v1"
-ARKHAM_KEY  = ""
+# ─── Arkham API (Real Client) ────────────────────────────────────────────────
+from skills.wallet_engine.arkham_client import (
+    identify_wallet as arkham_identify,
+    search_entities as arkham_search,
+    track_entity_flows as arkham_flows,
+    get_address_labels as arkham_labels,
+    get_transfers as arkham_transfers,
+    format_wallet_id as arkham_format_id,
+    format_entity_flows as arkham_format_flows,
+)
+ARKHAM_KEY = os.environ.get("ARKHAM_API_KEY", "")
 
 # Known institutional wallets — address: label
 ARKHAM_WALLETS = {
@@ -115,17 +124,19 @@ def classify_wallet(address, label=None, metadata=None):
 # ─── Arkham API ───────────────────────────────────────────────────────────────
 
 def get_arkham_labels(address):
+    """Get Arkham labels for an address using the real API client."""
     if not ARKHAM_KEY:
         return {"error": "no_arkham_key"}
     try:
-        resp = requests.get(
-            f"{ARKHAM_BASE}/entity/{address}",
-            headers={"X-API-Key": ARKHAM_KEY},
-            timeout=10,
-        )
-        if resp.ok:
-            return resp.json()
-        return {"error": f"arkham_{resp.status_code}"}
+        result = arkham_identify(address)
+        if result.get("is_labeled"):
+            return {
+                "entity": result.get("primary_entity", ""),
+                "type": result.get("wallet_type", ""),
+                "risk": result.get("risk_level", ""),
+                "labels": result.get("all_labels", []),
+            }
+        return {"error": "unlabeled"}
     except Exception as e:
         return {"error": str(e)}
 

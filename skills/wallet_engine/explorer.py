@@ -331,26 +331,17 @@ def get_sol_wallet(address: str) -> dict:
 
 def get_arkham_wallet(address: str, api_key: str = None) -> dict:
     """
-    Get full wallet analysis via Arkham API.
-    Returns: tags, labels, entities, transaction graph, tokens held.
-    Requires: ARKHAM_API_KEY in api_keys.py or passed as arg.
+    Get full wallet analysis via Arkham Intelligence API.
+    Returns: entity labels, wallet type, risk assessment, tags.
+    Uses the dedicated arkham_client.py module.
     """
-    if not api_key:
-        try:
-            from api_keys import ARKHAM_API_KEY
-            api_key = ARKHAM_API_KEY
-        except ImportError:
-            return {"error": "Arkham API key required — see api_keys.py.template"}
-
     try:
-        resp = requests.get(
-            f"https://api.arkhamintelligence.com/address/{address}",
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=15
-        )
-        if resp.status_code == 200:
-            return resp.json()
-        return {"error": f"Arkham returned {resp.status_code}"}
+        from skills.wallet_engine.arkham_client import identify_wallet, format_wallet_id
+        if api_key:
+            import os
+            os.environ["ARKHAM_API_KEY"] = api_key
+        result = identify_wallet(address)
+        return result
     except Exception as e:
         return {"error": str(e)}
 
