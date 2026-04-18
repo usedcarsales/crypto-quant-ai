@@ -1,0 +1,55 @@
+{
+  "data": {
+    "social": {
+      "mcap_change_24h": 2.58,
+      "vol_change_24h": 26.79,
+      "active_cryptos": 17609,
+      "btc_dominance": 57.31,
+      "global_sentiment": "bullish",
+      "rss_available": true,
+      "rss_sentiment": "neutral",
+      "rss_score": 0.033,
+      "rss_articles_analyzed": 100,
+      "rss_bullish": 46,
+      "rss_bearish": 42,
+      "rss_top_bullish": [
+        "XRP leads majors with 8% weekly outperformance, what next after breakout",
+        "Sam Altman\u2019s World project launches major upgrade to fight deepfakes and bots",
+        "Beaten-down digital asset treasury names lead crypto stock surge as bitcoin hits $78,000"
+      ],
+      "rss_top_bearish": [
+        "France's finance minister calls for more euro stablecoins in sign of government policy shift",
+        "Russia-linked Grinex exchange halts operations after $13 million \u2018state-backed\u2019 hack",
+        "The 24-hour trap: Why the UK\u2019s new crypto rules could catch some firms off guard"
+      ],
+      "rss_top_coins": [
+        [
+          "BTC",
+          72
+        ],
+        [
+          "OP",
+          62
+        ],
+        [
+          "ETH",
+          42
+        ],
+        [
+          "SOL",
+          31
+        ],
+        [
+          "XRP",
+          24
+        ]
+      ],
+      "combined_score": 100,
+      "timestamp": "2026-04-18T04:58:13.894385+00:00"
+    },
+    "derivatives": {
+      "error": "module 'derivs' has no attribute 'analyze_derivatives_sentiment'"
+    }
+  },
+  "cached_at": "2026-04-18T04:58:13.896316+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "data": {
+    "BTC": {
+      "error": "module 'ta' has no attribute 'analyze_coin'"
+    },
+    "ETH": {
+      "error": "module 'ta' has no attribute 'analyze_coin'"
+    },
+    "SOL": {
+      "error": "module 'ta' has no attribute 'analyze_coin'"
+    },
+    "BNB": {
+      "error": "module 'ta' has no attribute 'analyze_coin'"
+    },
+    "AVAX": {
+      "error": "module 'ta' has no attribute 'analyze_coin'"
+    }
+  },
+  "cached_at": "2026-04-18T04:58:09.614834+00:00"
+}

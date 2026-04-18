@@ -457,7 +457,7 @@ def run_paper_cycle(coins: list = None) -> dict:
       4. Return cycle report
     """
     if coins is None:
-        coins = ["BTC", "ETH", "SOL", "BNB", "AVAX", "XRP", "ADA", "DOGE"]  # Top 8 for more signals
+        coins = ["BTC", "ETH", "SOL", "BNB", "AVAX"]  # Top 5 for more signals
 
     # Step 1: Check existing positions
     closed = check_and_close_positions()
@@ -652,7 +652,7 @@ if __name__ == "__main__":
         ta_mod  = iu.module_from_spec(ta_spec); ta_spec.loader.exec_module(ta_mod)
         TA_CACHE_FILE = "/tmp/crypto-quant-ta-cache.json"
 
-        coins = [("BTC","bitcoin"), ("ETH","ethereum"), ("SOL","solana"), ("BNB","binancecoin"), ("AVAX","avalanche-2"), ("XRP","ripple"), ("ADA","cardano"), ("DOGE","dogecoin")]
+        coins = [("BTC","bitcoin"), ("ETH","ethereum"), ("SOL","solana"), ("BNB","binancecoin"), ("AVAX","avalanche-2")]
         cached = {}
         for coin, cid in coins:
             print(f"  Caching {coin}...", end=" ", flush=True)

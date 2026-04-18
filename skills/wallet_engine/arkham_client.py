@@ -781,3 +781,6 @@ if __name__ == "__main__":
     print(format_entity_flows(flows))
     
     print("\n✅ Arkham client tested")
+def get_address_labels(address: str) -> dict:
+    """Wrapper for get_address_intelligence to provide label data."""
+    return get_address_intelligence(address)
