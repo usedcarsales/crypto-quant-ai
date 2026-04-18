@@ -343,9 +343,41 @@ def collect_smart_money(dry_run=False):
         return {"error": str(e), "_section_failed": True}
 
 
-def collect_trade_signals(coins=None, dry_run=False):
-    """Generate trade signals for major coins."""
+def _load_composite_scores(coins=None):
+    """Load composite scores from /tmp/quant-scores.json or correlation engine."""
     coins = coins or MAJOR_COINS
+    scores = {}
+    
+    # Priority 1: cached quant-scores.json (fast, no API calls)
+    try:
+        with open("/tmp/quant-scores.json") as f:
+            cached = json.load(f)
+        for sym, data in cached.items():
+            scores[sym] = data
+    except Exception:
+        pass
+    
+    # Priority 2: Run correlation engine for missing coins (slow)
+    if len(scores) < len(coins) and not os.environ.get("QUANT_DRY_RUN"):
+        corr_mod = get_correlation()
+        if corr_mod:
+            for coin_id in coins:
+                symbol = MAJOR_SYMBOLS.get(coin_id, coin_id.upper())
+                if symbol not in scores:
+                    try:
+                        result = corr_mod.score_composite(symbol, coin_id=coin_id)
+                        if result and isinstance(result, dict):
+                            scores[symbol] = result
+                    except Exception:
+                        pass
+    
+    return scores
+
+
+def collect_trade_signals(coins=None, dry_run=False, composite_scores=None):
+    """Generate trade signals for major coins. Requires composite_scores dict."""
+    coins = coins or MAJOR_COINS
+    composite_scores = composite_scores or {}
     
     if dry_run:
         cached, age = _load_cache("trade_signals", coins, max_age_hours=48)
@@ -361,7 +393,20 @@ def collect_trade_signals(coins=None, dry_run=False):
     for coin_id in coins:
         symbol = MAJOR_SYMBOLS.get(coin_id, coin_id.upper())
         try:
-            signal = sig_mod.generate_signal(coin_id)
+            # Get composite score for this coin
+            score_data = composite_scores.get(symbol, {})
+            cs = score_data.get("composite_score", score_data.get("score")) if score_data else None
+            direction = score_data.get("signal", score_data.get("recommendation", "NEUTRAL")) if score_data else None
+            confidence = score_data.get("confidence") if score_data else None
+            divergence = score_data.get("divergence") if score_data else None
+            
+            signal = sig_mod.generate_signal(
+                coin_id,
+                composite_score=cs,
+                direction=direction,
+                confidence=confidence,
+                divergence=divergence,
+            )
             results[symbol] = signal
         except Exception as e:
             results[symbol] = {"error": str(e)}
@@ -486,38 +531,15 @@ def generate_brief(format="markdown", coins=None, dry_run=False):
     if not ok:
         failed_sections.append("smart_money")
     
+    print("🔗 Loading composite scores...")
+    composite_scores = _load_composite_scores(coins)
+    if composite_scores:
+        print(f"   Loaded {len(composite_scores)} composite scores")
+    
     print("🎯 Generating trade signals...")
-    trade_sigs, ok = _safe_collect("Trade signals", collect_trade_signals, coins, dry_run)
+    trade_sigs, ok = _safe_collect("Trade signals", collect_trade_signals, coins, dry_run, composite_scores)
     if not ok:
         failed_sections.append("trade_signals")
-    
-    # ─── Correlation engine (composite scores) ─────────────────────────────────
-    print("🔗 Loading composite scores...")
-    composite_scores = {}
-
-    # Priority 1: Use cached quant-scores.json (fast, no API calls)
-    try:
-        with open("/tmp/quant-scores.json") as f:
-            cached = json.load(f)
-        for sym, data in cached.items():
-            composite_scores[sym] = data
-    except Exception:
-        pass
-
-    # Priority 2: Run correlation engine only for coins not in cache (slow)
-    if composite_scores:
-        print(f"   Loaded {len(composite_scores)} cached scores")
-    elif not dry_run:
-        corr_mod = get_correlation()
-        if corr_mod:
-            for coin_id in coins:
-                symbol = MAJOR_SYMBOLS.get(coin_id, coin_id.upper())
-                try:
-                    result = corr_mod.score_composite(symbol, coin_id=coin_id)
-                    if result and isinstance(result, dict):
-                        composite_scores[symbol] = result
-                except Exception:
-                    pass
     
     # ─── Scanner (hot coins) ───────────────────────────────────────────────────
     print("🔍 Scanning for hot coins...")
@@ -814,19 +836,61 @@ if __name__ == "__main__":
                              "Examples: --coins BTC ETH, --coins bitcoin cardano dogecoin")
     parser.add_argument("--dry-run", action="store_true",
                         help="Use cached data instead of live API calls (safe for offline testing)")
+    parser.add_argument("--post", action="store_true",
+                        help="Post the brief to Discord after generating (QuantAlpha free tier)")
+    parser.add_argument("--channel", default=None,
+                        help="Discord channel ID for --post (default: QuantAlpha free-tier channel)")
     args = parser.parse_args()
     
     coin_label = ", ".join(args.coins) if args.coins else "MAJOR_COINS"
     mode_label = " (dry-run)" if args.dry_run else ""
     print(f"🚀 Generating Daily Brief ({args.format}) — coins: {coin_label}{mode_label}...")
     
-    brief = generate_brief(format=args.format, coins=args.coins, dry_run=args.dry_run)
-    
-    if args.output:
-        with open(args.output, "w") as f:
-            f.write(brief)
-        print(f"✅ Brief saved to {args.output}")
+    # For --post, always generate JSON internally for the post module
+    if args.post:
+        # Generate JSON data for the post module
+        brief = generate_brief(format="json", coins=args.coins, dry_run=args.dry_run)
+        report_data = json.loads(brief)
+        
+        # Also generate markdown for stdout display
+        md_brief = _generate_markdown_brief(report_data)
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(md_brief)
+            print(f"✅ Brief saved to {args.output}")
+        else:
+            print(md_brief)
+        
+        # Post to Discord
+        from quantalpha.discord_post import post_brief_to_discord, QUANTALPHA_CHANNEL_ID
+        channel = args.channel or QUANTALPHA_CHANNEL_ID
+        
+        # Free tier: limit to top 3 coins
+        from quantalpha.discord_formatter import FREE_COINS
+        post_coins = FREE_COINS  # Always use free-tier coins for Discord post
+        
+        print(f"\n📬 Posting to Discord channel {channel}...")
+        post_result = post_brief_to_discord(
+            report_data=report_data,
+            channel_id=channel,
+            coins=post_coins,
+            dry_run=args.dry_run,
+        )
+        
+        if post_result["status"] == "posted":
+            print(f"✅ Posted to Discord! (method: {post_result.get('method')})")
+        elif post_result["status"] == "simulated":
+            print(f"📦 Dry-run — Discord post simulated (not sent)")
+        else:
+            print(f"❌ Discord post failed: {post_result.get('error')}")
     else:
-        print(brief)
+        brief = generate_brief(format=args.format, coins=args.coins, dry_run=args.dry_run)
+        
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(brief)
+            print(f"✅ Brief saved to {args.output}")
+        else:
+            print(brief)
     
     print(f"\n✅ Brief generated at {datetime.now(timezone.utc).isoformat()}")
