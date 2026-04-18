@@ -1,0 +1,40 @@
+{
+  "products": [
+    {
+      "name": "QuantAlpha Premium",
+      "description": "Full 20-coin signal matrix, whale alerts, RSI pullback notifications, trade journal access, email delivery. Premium crypto market intelligence by Particulate LLC.",
+      "prices": [
+        {
+          "nickname": "QuantAlpha Premium Monthly",
+          "unit_amount": 2900,
+          "currency": "usd",
+          "recurring": {
+            "interval": "month"
+          }
+        }
+      ],
+      "metadata": {
+        "tier": "premium",
+        "product": "quantalpha"
+      }
+    },
+    {
+      "name": "QuantAlpha Institutional",
+      "description": "Everything in Premium plus custom watchlist, API access, historical archive, weekly strategy review, priority support. For professional traders and funds.",
+      "prices": [
+        {
+          "nickname": "QuantAlpha Institutional Monthly",
+          "unit_amount": 19900,
+          "currency": "usd",
+          "recurring": {
+            "interval": "month"
+          }
+        }
+      ],
+      "metadata": {
+        "tier": "institutional",
+        "product": "quantalpha"
+      }
+    }
+  ]
+}
