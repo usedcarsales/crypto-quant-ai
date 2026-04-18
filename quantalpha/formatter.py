@@ -86,7 +86,7 @@ def format_free_brief(report_data: Dict, coins: List[str] = None) -> str:
         lines.append("")
     
     # Market Prices — top 3 only
-    prices = report_data.get("prices", {})
+    prices = report_data.get("prices", report_data.get("market", {}).get("prices", {}))
     if prices:
         lines.append("## 💰 Prices")
         for coin_id in coins[:3]:
