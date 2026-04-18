@@ -172,6 +172,7 @@ def generate_signal(
                 "signal": "NEUTRAL",
                 "reason": f"Cooldown active ({int(cooldown_sec - elapsed)}s remaining)",
                 "direction": "NEUTRAL",
+            "composite_score": composite_score,
             }
 
     # ── 3. Check daily trade count ─────────────────────────────────────────────
@@ -184,6 +185,7 @@ def generate_signal(
             "signal": "NEUTRAL",
             "reason": f"Daily trade limit reached ({len(today_trades)}/{risk_policy.get('max_trades_per_day', 5)})",
             "direction": "NEUTRAL",
+            "composite_score": composite_score,
         }
 
     # ── 4. Check open positions ────────────────────────────────────────────────
@@ -194,6 +196,7 @@ def generate_signal(
             "signal": "NEUTRAL",
             "reason": f"Max open positions reached ({len(open_pos)}/{risk_policy.get('max_positions_open', 3)})",
             "direction": "NEUTRAL",
+            "composite_score": composite_score,
         }
 
     # ── 5. Confidence threshold ────────────────────────────────────────────────

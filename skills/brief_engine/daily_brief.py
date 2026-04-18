@@ -637,7 +637,9 @@ def _generate_markdown_brief(data):
         for symbol, sig in trade_sigs.items():
             if isinstance(sig, dict) and "error" not in sig:
                 direction = sig.get("direction", sig.get("signal", "NEUTRAL"))
-                confidence = sig.get("confidence", 0)
+                confidence = sig.get("confidence", sig.get("confidence_score", 0))
+                composite_score = sig.get("composite_score")
+                reason = sig.get("reason", "")
                 entry = sig.get("entry_price", sig.get("entry", "N/A"))
                 sl = sig.get("stop_loss", sig.get("sl", "N/A"))
                 tp = sig.get("take_profit", sig.get("tp", "N/A"))
@@ -651,8 +653,13 @@ def _generate_markdown_brief(data):
                 if isinstance(tp, (int, float)):
                     tp = f"${tp:,.2f}"
                 
-                lines.append(f"- **{symbol}** {emoji} {direction} (conf: {_format_confidence(confidence)})")
-                lines.append(f"  Entry: {entry} | SL: {sl} | TP: {tp} | R/R: {rr}")
+                # Show composite score in signal line if available
+                cs_str = f" (score: {composite_score:.0f})" if composite_score else ""
+                # Show reason for NEUTRAL signals (cooldown, limits, etc.)
+                reason_str = f" — {reason}" if reason and direction == "NEUTRAL" else ""
+                lines.append(f"- **{symbol}** {emoji} {direction}{cs_str}{reason_str}")
+                if entry != "N/A" or sl != "N/A" or tp != "N/A":
+                    lines.append(f"  Entry: {entry} | SL: {sl} | TP: {tp} | R/R: {rr}")
             elif isinstance(sig, dict) and "error" in sig:
                 lines.append(f"- **{symbol}**: ⚠️ {sig['error']}")
     elif isinstance(trade_sigs, dict) and trade_sigs.get("_section_failed"):
