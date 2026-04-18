@@ -47,7 +47,7 @@ def load_risk_policy():
     return {
         "max_position_size_usd": 1000,
         "max_daily_loss_usd": 100,
-        "min_confidence_to_trade": 50,
+        "min_confidence_to_trade": 45,
         "strong_signal_threshold": 70,
         "stop_loss_atr_multiplier": 1.5,
         "take_profit_min_ratio": 2.0,
@@ -197,7 +197,7 @@ def generate_signal(
         }
 
     # ── 5. Confidence threshold ────────────────────────────────────────────────
-    min_conf = risk_policy.get("min_confidence_to_trade", 50)
+    min_conf = risk_policy.get("min_confidence_to_trade", 45)
     strong_thresh = risk_policy.get("strong_signal_threshold", 70)
 
     # Map confidence string to numeric
@@ -230,7 +230,7 @@ def generate_signal(
         actual_direction = "BUY" if direction == "BUY" else "SELL"
     elif composite_score >= min_conf:
         signal_type = "MODERATE"
-        actual_direction = "BUY" if composite_score >= 55 else "SELL"
+        actual_direction = "BUY" if composite_score >= 50 else "SELL"
     else:
         return {
             "coin": coin,
