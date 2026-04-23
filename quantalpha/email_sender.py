@@ -25,6 +25,8 @@ from email.mime.text import MIMEText
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
+from smtp_client import SMTPClient, SMTPError
+
 # ─── Configuration ──────────────────────────────────────────────────────────────
 
 SMTP_CONFIG = {
@@ -177,51 +179,18 @@ class EmailSender:
             batch = recipients[i:i + BATCH_SIZE]
             
             try:
-                msg = MIMEMultipart("alternative")
-                msg["From"] = f"QuantAlpha <{self.from_email}>"
-                msg["Subject"] = subject
-                msg["Bcc"] = ", ".join(batch)
-                
-                html_part = MIMEText(html_content, "html")
-                msg.attach(html_part)
-                
-                # Send via SMTP
-                if SMTP_CONFIG["use_tls"]:
-                    context = ssl.create_default_context()
-                    with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
-                        server.starttls(context=context)
-                        server.login(self.smtp_user, self.smtp_pass)
-                        server.send_message(msg)
-                else:
-                    with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
-                        server.login(self.smtp_user, self.smtp_pass)
-                        server.send_message(msg)
-                
-                for r in batch:
-                    self._log_delivery(r, subject, True)
-                success += len(batch)
-                print(f"✅ Sent batch {i // BATCH_SIZE + 1}: {len(batch)} recipients")
-                
-            except smtplib.SMTPAuthenticationError as e:
-                print(f"❌ SMTP auth failed: {e}")
-                for r in batch:
-                    self._log_delivery(r, subject, False, str(e))
-                failures += len(batch)
-                break  # No point retrying with bad creds
-                
-            except smtplib.SMTPException as e:
-                print(f"❌ SMTP error in batch {i // BATCH_SIZE + 1}: {e}")
-                for r in batch:
-                    self._log_delivery(r, subject, False, str(e))
-                failures += len(batch)
-                # Wait and retry next batch
-                time.sleep(BATCH_DELAY_SECONDS)
-                
-            except Exception as e:
-                print(f"❌ Unexpected error sending batch {i // BATCH_SIZE + 1}: {e}")
-                for r in batch:
-                    self._log_delivery(r, subject, False, str(e))
-                failures += len(batch)
+            with SMTPClient(self.smtp_host, self.smtp_port, self.smtp_user, self.smtp_pass) as client:
+                client.send_message(msg)
+            for r in batch:
+                self._log_delivery(r, subject, True)
+            success += len(batch)
+            print(f"✅ Sent batch {i // BATCH_SIZE + 1}: {len(batch)} recipients")
+
+        except SMTPError as e:
+            print(f"❌ SMTP error in batch {i // BATCH_SIZE + 1}: {e}")
+            for r in batch:
+                self._log_delivery(r, subject, False, str(e))
+            failures += len(batch)
             
             # Rate limit between batches
             if i + BATCH_SIZE < len(recipients):
