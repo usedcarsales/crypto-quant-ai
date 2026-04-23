@@ -100,13 +100,19 @@ COIN_ID_MAP = {
 
 
 def get_current_price(coin: str) -> float:
-    """Get current USD price for a coin via CoinGecko."""
+    """Get current USD price for a coin via CoinGecko with rate-limit retry."""
     cid = COIN_ID_MAP.get(coin, coin.lower())
-    try:
-        data = PRICE_MOD.get_simple_price([cid], ["usd"])
-        return float(data.get(cid, {}).get("usd", 0))
-    except Exception:
-        return 0.0
+    for attempt in range(3):
+        try:
+            data = PRICE_MOD.get_simple_price([cid], ["usd"])
+            price = float(data.get(cid, {}).get("usd", 0))
+            if price > 0:
+                return price
+            # Got 0 — could be rate limit, retry with backoff
+            time.sleep(2 ** attempt)
+        except Exception:
+            time.sleep(2 ** attempt)
+    return 0.0
 
 
 def get_market_price(coin: str) -> dict:
