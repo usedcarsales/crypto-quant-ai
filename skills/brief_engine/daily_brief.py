@@ -301,7 +301,7 @@ def collect_sentiment(dry_run=False):
     derivs_mod = get_derivatives()
     if derivs_mod:
         try:
-            derivs = derivs_mod.analyze_derivatives_sentiment()
+            derivs = derivs_mod.market_sentiment()
             results["derivatives"] = derivs
         except Exception as e:
             results["derivatives"] = {"error": str(e)}
