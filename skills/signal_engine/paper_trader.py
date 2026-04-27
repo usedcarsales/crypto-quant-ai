@@ -266,10 +266,17 @@ def check_and_close_positions() -> list:
     for trade in open_trades:
         coin      = trade["coin"]
         direction = trade["direction"]
-        entry     = trade["entry_price"]
-        sl        = trade.get("stop_loss", 0)
-        tp        = trade.get("take_profit", 0)
-        size      = trade["size_units"]
+        entry     = float(trade["entry_price"])
+        # Safely coerce SL/TP to float — journal may contain strings or None
+        try:
+            sl = float(trade.get("stop_loss", 0) or 0)
+        except (ValueError, TypeError):
+            sl = 0.0
+        try:
+            tp = float(trade.get("take_profit", 0) or 0)
+        except (ValueError, TypeError):
+            tp = 0.0
+        size = float(trade["size_units"])
 
         current_price = get_current_price(coin)
         if current_price <= 0:
@@ -334,9 +341,9 @@ def close_all_positions(reason: str = "END_OF_DAY") -> list:
     closed = []
 
     for trade in open_trades:
-        coin    = trade["coin"]
-        entry   = trade["entry_price"]
-        size    = trade["size_units"]
+        coin      = trade["coin"]
+        entry     = float(trade["entry_price"])
+        size      = float(trade["size_units"])
         direction = trade["direction"]
 
         current_price = get_current_price(coin)
