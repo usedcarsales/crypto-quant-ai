@@ -26,6 +26,7 @@ import importlib.util as _spec
 import json
 import os
 import math
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -45,9 +46,42 @@ PRICE_MOD   = _load_mod("price",     "skills/price_engine/coingecko.py")
 
 # ─── State Files ────────────────────────────────────────────────────────────────
 
-PORTFOLIO_FILE  = "/tmp/crypto-quant-portfolio.json"
-TRADE_JOURNAL  = "/tmp/crypto-quant-trade-journal.json"
-DAILY_SUMMARIES = "/tmp/crypto-quant-daily-summaries.json"
+PORTFOLIO_FILE    = "/tmp/crypto-quant-portfolio.json"
+TRADE_JOURNAL     = "/tmp/crypto-quant-trade-journal.json"
+SIGNAL_HISTORY    = "/tmp/crypto-quant-signal-history.json"
+DAILY_SUMMARIES   = "/tmp/crypto-quant-daily-summaries.json"
+
+
+def _sync_signal_history(coin: str, exit_price: float, exit_reason: str, pnl: float):
+    """
+    Sync a closed trade back to signal history so trade_signals.py
+    sees the correct open-position count. Prevents the divergence
+    where signal_history has stale OPEN entries.
+    """
+    if not os.path.exists(SIGNAL_HISTORY):
+        return
+    try:
+        with open(SIGNAL_HISTORY) as f:
+            history = json.load(f)
+    except Exception:
+        return
+
+    signals = history.get("signals", [])
+    for s in signals:
+        if s.get("coin") == coin and s.get("status") == "OPEN":
+            s["status"]      = "CLOSED"
+            s["close_reason"] = exit_reason
+            s["close_time"]   = datetime.now(timezone.utc).isoformat()
+            s["exit_price"]   = round(exit_price, 4)
+            s["pnl_usd"]      = round(pnl, 2)
+            break  # close the first matching open signal
+
+    history["signals"] = signals
+    try:
+        with open(SIGNAL_HISTORY, "w") as f:
+            json.dump(history, f, default=str)
+    except Exception:
+        pass
 
 
 # ─── Portfolio Initialization ─────────────────────────────────────────────────
@@ -317,6 +351,9 @@ def check_and_close_positions() -> list:
             # Sync to risk manager
             RISK_MOD.close_position(coin, exit_price, reason=exit_reason)
 
+            # Sync to signal history (prevents divergence bug)
+            _sync_signal_history(coin, exit_price, exit_reason, pnl)
+
             closed.append(trade)
 
     if closed:
@@ -362,6 +399,10 @@ def close_all_positions(reason: str = "END_OF_DAY") -> list:
         trade["closed_at"]    = datetime.now(timezone.utc).isoformat()
 
         RISK_MOD.close_position(coin, current_price, reason=reason)
+
+        # Sync to signal history (prevents divergence bug)
+        _sync_signal_history(coin, current_price, reason, pnl)
+
         closed.append(trade)
 
     if closed:
@@ -461,11 +502,11 @@ def generate_daily_summary(date: str = None) -> dict:
 
 # ─── Run Full Paper Trading Cycle ─────────────────────────────────────────────
 
-def run_paper_cycle(coins: list = None) -> dict:
+def run_paper_cycle(coins: list = None, ta_cache: dict = None) -> dict:
     """
-    Run the paper trading cycle for specified coins (default: top 3 by market cap).
+    Run the paper trading cycle for specified coins (default: top 5 by market cap).
       1. Check and close any positions that hit SL/TP
-      2. Generate signals using single-symbol analysis (avoids multi-API rate limiting)
+      2. Generate signals using cached TA data or fresh single-symbol analysis
       3. Risk-check and execute new signals
       4. Return cycle report
     """
@@ -475,13 +516,7 @@ def run_paper_cycle(coins: list = None) -> dict:
     # Step 1: Check existing positions
     closed = check_and_close_positions()
 
-    # Step 2: Generate signals per coin (single-symbol, no full correlation engine)
-    import importlib.util as iu
-    ta_spec = iu.spec_from_file_location("ta", "skills/ta_engine/analyze.py")
-    ta_mod  = iu.module_from_spec(ta_spec); ta_spec.loader.exec_module(ta_mod)
-
-    # Use a simplified scoring: TA score only for paper trading cycle
-    # Full correlation engine (3.6) is used for reporting, not execution
+    # Step 2: Generate signals per coin (use cache if provided to avoid rate limits)
     COIN_ID_MAP_LOCAL = {
         "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
         "BNB": "binancecoin", "XRP": "ripple",
@@ -494,20 +529,45 @@ def run_paper_cycle(coins: list = None) -> dict:
         if not cid:
             continue
         try:
-            td = ta_mod.analyze(coin, cid, days=30)
-            ta_score   = td.get("conviction_score", 50)
-            ta_signal  = td.get("recommendation", "HOLD")
-            entry      = td.get("current_price", 0)
-            atr        = td.get("indicators", {}).get("atr_14", 0)
+            # Use cached TA data if available and fresh (within 2 hours)
+            if ta_cache and coin in ta_cache and ta_cache[coin]:
+                cached = ta_cache[coin]
+                cached_at = cached.get("cached_at", "")
+                # Check freshness: skip if older than 2 hours
+                is_fresh = True
+                if cached_at:
+                    try:
+                        dt = datetime.fromisoformat(cached_at.replace("Z", "+00:00"))
+                        is_fresh = (datetime.now(timezone.utc) - dt) < timedelta(hours=2)
+                    except Exception:
+                        is_fresh = True  # assume fresh if parse fails
+                if is_fresh:
+                    ta_score  = cached.get("conviction_score", 50)
+                    ta_signal = cached.get("recommendation", "HOLD")
+                    entry     = cached.get("current_price", 0)
+                    atr       = cached.get("atr_14", 0)
+                else:
+                    # Stale cache — skip to avoid rate limit
+                    continue
+            else:
+                # No cache — fresh analysis (fallback, may hit rate limits)
+                import importlib.util as iu
+                ta_spec = iu.spec_from_file_location("ta", "skills/ta_engine/analyze.py")
+                ta_mod  = iu.module_from_spec(ta_spec); ta_spec.loader.exec_module(ta_mod)
+                td = ta_mod.analyze(coin, cid, days=30)
+                ta_score  = td.get("conviction_score", 50)
+                ta_signal = td.get("recommendation", "HOLD")
+                entry     = td.get("current_price", 0)
+                atr       = td.get("indicators", {}).get("atr_14", 0)
 
             # Map TA recommendation to trade signal
             direction_map = {
-                "STRONG BUY":  "BUY",
-                "BUY":        "BUY",
+                "STRONG BUY":   "BUY",
+                "BUY":          "BUY",
                 "MODERATE BUY": "BUY",
-                "STRONG SELL": "SELL",
-                "SELL":       "SELL",
-                "MODERATE SELL": "SELL",
+                "STRONG SELL":  "SELL",
+                "SELL":         "SELL",
+                "MODERATE SELL":"SELL",
             }
             direction = direction_map.get(ta_signal, None)
             if not direction:
@@ -698,7 +758,7 @@ if __name__ == "__main__":
             with open(TA_CACHE_FILE) as f:
                 ta_cache = json.load(f)
 
-        report = run_paper_cycle()
+        report = run_paper_cycle(ta_cache=ta_cache)
         if "error" in report:
             print(f"Error: {report['error']}")
         else:
