@@ -131,8 +131,11 @@ def check_and_alert():
 
 def send_telegram_alert(alert_text):
     """Send alert to LayeredUp Telegram channel."""
-    token = "8764496280:AAEcxiXNNqbencWmvEo579T_fO5kl-uG1cs"
-    chat_id = "-1003860627513"
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        print("[WARN] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set. Skipping alert.")
+        return False
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,
